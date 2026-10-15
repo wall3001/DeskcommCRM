@@ -131,6 +131,7 @@ acessibilidade).
 | Doc | Conteúdo |
 |---|---|
 | [`SETUP.md`](SETUP.md) | Guia completo de env vars e setup local |
+| [`LOCAL-RUN-CN.md`](LOCAL-RUN-CN.md) | 开发路径中文手册：本机命令、环境变量填写顺序、还缺哪些密钥 |
 | [`deploy-selfhost/README.md`](deploy-selfhost/README.md) | Self-host genérico |
 | [`deploy-hostgator/README.md`](deploy-hostgator/README.md) | VPS HostGator (`install.sh`, `backup.sh`, `reset-mfa.sh`) |
 | [`DEPLOY-CHECKLIST.md`](DEPLOY-CHECKLIST.md) | Checklist de deploy |
