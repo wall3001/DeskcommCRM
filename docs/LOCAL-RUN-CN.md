@@ -161,7 +161,22 @@ WAHA_API_BASE_URL=http://127.0.0.1:3030
 WAHA_API_KEY=<同一个 WAHA_KEY>
 ```
 
-`/ping` 不鉴权。配对二维码要手机，这一步没有做。
+`/ping` 不鉴权。这台 VM 上 WhatsApp 已配对为 WORKING；`pnpm dev` 需要监听 `0.0.0.0:3000`，容器里的 `host.docker.internal:3000` 才能打到应用（只绑 `127.0.0.1` 时 webhook 是 `ECONNREFUSED`）。
+
+### 本地 Ollama（Gemma 4）
+
+这台机器没有 systemd，用 Docker 比官方安装脚本稳。模型先试小的 `gemma4:e2b`。
+
+```bash
+docker run -d --name deskcomm-ollama --restart unless-stopped \
+  -p 127.0.0.1:11434:11434 \
+  -v deskcomm-ollama:/root/.ollama \
+  ollama/ollama:latest
+docker exec deskcomm-ollama ollama pull gemma4:e2b
+curl -sS http://127.0.0.1:11434/api/tags
+```
+
+产品默认拒绝把自定义 OpenAI 兼容地址指到 localhost（防 SSRF）。`next dev` 会为**自定义提供商**放开本机地址；生产环境即使设置 `ALLOW_PRIVATE_AI_BASE_URL=1` 也不放开。在 IA › Credenciais 里新增「Provedor personalizado」，地址 `http://127.0.0.1:11434/v1`，密钥随便填至少 8 个字符（例如 `ollama-local`），模型填拉下来的 tag。知识库 embedding 仍然要 OpenAI 或 Google，对话可以只用本地模型。
 
 ## 4. 启动并核对
 
@@ -203,7 +218,7 @@ OWNER_EMAIL='you@example.com' OWNER_PASSWORD='换成你自己的强密码' \
 按你想用到的深度，而不是按「不填就起不来」：
 
 1. **云上 Supabase**（若不用第 2 节的本地 Docker）：Project URL、anon key、service_role key、Session pooler URI。免费项目有项目数量上限。
-2. **至少一个 AI 提供商的密钥**：`ANTHROPIC_API_KEY`，或 `OPENAI_API_KEY`，或 `OPENROUTER_API_KEY`，或 `AI_GATEWAY_API_KEY`。不填，页面在，智能体不回复。听语音、给知识库做 embedding 还要 OpenAI 或你在「IA › Credenciais」里登记的密钥。
+2. **云上的 AI 密钥可以不填。** 对话可以用上面的本地 Ollama。听语音、给知识库做 embedding 仍要 OpenAI 或 Google。云上的 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY` / `AI_GATEWAY_API_KEY` 继续可选。
 3. **WhatsApp**：手机打开「已关联的设备」，在产品里扫 WAHA 的二维码。本地这张 CORE 镜像没有完成配对，也没有发出去一条消息。
 4. **邮件**（邀请、找回密码）：`RESEND_API_KEY` + `RESEND_FROM_EMAIL`，或 SMTP 那一组。都不填时，邀请链接留在屏幕上。
 5. **可选**：Sentry DSN、Nuvemshop、Google 日历 / Google Ads、自建 Jitsi。空着就少对应按钮，不挡启动。

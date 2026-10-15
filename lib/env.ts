@@ -134,6 +134,14 @@ const schema = z.object({
   EXTENSIONS_LOCAL_CATALOG_ORIGIN: z.string().optional().default(""),
 
   /**
+   * Exceção local do provedor personalizado: permite base URL em localhost /
+   * IP privado quando vale `1` e `NODE_ENV` não é `production`. `next dev`
+   * (`NODE_ENV=development`) já abre essa exceção sem a flag. Produção ignora
+   * o valor — a régua de SSRF do egress continua fechada.
+   */
+  ALLOW_PRIVATE_AI_BASE_URL: z.string().optional().default(""),
+
+  /**
    * Retenção do arquivo do corpo cru dos webhooks (`webhook_events_log`).
    *
    * O default de 7 dias não é gosto: numa instalação real esse arquivo era 86%

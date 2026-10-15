@@ -216,6 +216,53 @@ describe("o endereço da empresa não alcança a rede interna do servidor", () =
     );
   });
 
+  it("produção ignora ALLOW_PRIVATE_AI_BASE_URL e continua recusando loopback", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ALLOW_PRIVATE_AI_BASE_URL", "1");
+    const espiao = vi.fn();
+    vi.stubGlobal("fetch", espiao);
+
+    const r = await validateCustomKey("sk-x", "http://127.0.0.1:11434/v1");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/^unsafe_url:/);
+    expect(espiao).not.toHaveBeenCalled();
+  });
+
+  it("em development, loopback do provedor personalizado é chamado", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const espiao = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ id: "gemma4:e2b" }] }), { status: 200 }));
+    vi.stubGlobal("fetch", espiao);
+
+    expect(await validateCustomKey("ollama-local", "http://127.0.0.1:11434/v1")).toEqual({
+      ok: true,
+      models: ["gemma4:e2b"],
+    });
+    expect(espiao).toHaveBeenCalledOnce();
+
+    const interno = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    await fetchParaDestinoDaOrganizacao(interno)("http://127.0.0.1:11434/v1/chat/completions", { method: "POST" });
+    expect(interno).toHaveBeenCalledOnce();
+  });
+
+  it("fora de development, a flag 1 abre o loopback e file:// continua recusado", async () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("ALLOW_PRIVATE_AI_BASE_URL", "1");
+    const espiao = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ id: "gemma4:e2b" }] }), { status: 200 }));
+    vi.stubGlobal("fetch", espiao);
+
+    expect(await validateCustomKey("ollama-local", "http://127.0.0.1:11434/v1")).toEqual({
+      ok: true,
+      models: ["gemma4:e2b"],
+    });
+    expect(await validateCustomKey("ollama-local", "file:///etc/passwd")).toMatchObject({
+      ok: false,
+      error: "base_url_invalida",
+    });
+    await expect(
+      fetchParaDestinoDaOrganizacao(espiao)("file:///etc/passwd", { method: "GET" }),
+    ).rejects.toThrow("unsafe_url:scheme");
+  });
+
   it.each([
     ["registry do turno", () => registry.custom!("sk-x", "gpt-x", "http://127.0.0.1:4000/v1")],
     ["ensaio da aba Teste", () => buildModel("custom", "sk-x", "gpt-x", "http://127.0.0.1:4000/v1")],
