@@ -332,6 +332,34 @@ export async function motivoDaRecusaDeDestino(
 }
 
 /**
+ * Exceção LOCAL do provedor personalizado: Ollama (ou um LiteLLM) na mesma
+ * máquina. Produção nunca abre — nem com `ALLOW_PRIVATE_AI_BASE_URL=1`.
+ * Fora de produção, abre em `NODE_ENV=development` ou com a flag em `1`.
+ * Webhook, visão e o resto do egress não passam por aqui.
+ */
+export function basePrivadaDoProvedorPersonalizadoPermitida(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.NODE_ENV === "development" || process.env.ALLOW_PRIVATE_AI_BASE_URL === "1";
+}
+
+/**
+ * A régua do provedor personalizado. Com a exceção local ligada, loopback e
+ * IP privado deixam de ser recusa; esquema, literal IPv6, https em produção
+ * e redirect continuam recusando.
+ */
+export async function motivoDaRecusaDaBaseDoProvedorPersonalizado(endereco: string): Promise<string | null> {
+  const recusa = await motivoDaRecusaDeDestino(endereco, "organizacao");
+  if (
+    recusa &&
+    basePrivadaDoProvedorPersonalizadoPermitida() &&
+    (recusa === "unsafe_url:private_host" || recusa === "unsafe_url:private_ip")
+  ) {
+    return null;
+  }
+  return recusa;
+}
+
+/**
  * `fetch` para um endereço escolhido por uma ORGANIZAÇÃO e chamado por um SDK
  * (o provedor personalizado, #1642). Cada requisição passa pela régua da
  * organização ANTES de a chave sair, e redirect não é seguido: um 3xx vira
@@ -346,7 +374,7 @@ export async function motivoDaRecusaDeDestino(
 export function fetchParaDestinoDaOrganizacao(interno: typeof fetch = fetch): typeof fetch {
   return async (input, init) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    const recusa = await motivoDaRecusaDeDestino(url, "organizacao");
+    const recusa = await motivoDaRecusaDaBaseDoProvedorPersonalizado(url);
     if (recusa) throw new Error(recusa);
     const res = await interno(input, { ...init, redirect: "manual" });
     if (res.status >= 300 && res.status < 400) throw new Error("unsafe_url:redirect_not_followed");

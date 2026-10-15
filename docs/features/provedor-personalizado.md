@@ -33,9 +33,14 @@ A régua vale no teste antes de salvar, na validação em segundo plano e em
 interno depois de cadastrado é recusado na hora da chamada.
 
 Um LiteLLM ou vLLM rodando na mesma máquina que o CRM, portanto, não entra
-por aqui: numa instalação com várias empresas, abrir a rede interna para o
-endereço de uma delas deixaria essa empresa ler os serviços internos da
-instalação.
+por aqui numa instalação de produção: numa instalação com várias empresas,
+abrir a rede interna para o endereço de uma delas deixaria essa empresa ler
+os serviços internos da instalação.
+
+No `next dev` (`NODE_ENV=development`), ou com `ALLOW_PRIVATE_AI_BASE_URL=1`
+fora de produção, essa recusa abre só para o provedor personalizado — é o
+caminho do Ollama na mesma máquina. Produção ignora a flag. Webhook e visão
+não usam essa exceção.
 
 ## O teste antes de salvar
 

@@ -10,7 +10,7 @@
  */
 import { baseDaApiDoJev } from "@/lib/ai/decisao/cliente";
 import { PROVEDOR_POR_ASSINATURA, type ProvedorComChave } from "@/lib/ai/pontos/provedores";
-import { motivoDaRecusaDeDestino } from "@/lib/automation/destinos-internos-autorizados";
+import { motivoDaRecusaDaBaseDoProvedorPersonalizado } from "@/lib/automation/destinos-internos-autorizados";
 import { env } from "@/lib/env";
 
 export interface ValidationOk {
@@ -329,7 +329,7 @@ export async function validateCustomKey(
   // régua, o admin de uma empresa sondaria a rede interna da instalação
   // (loopback, metadados de nuvem, serviços do compose) e mandaria a chave para
   // lá. Mesma régua da visão em `workers/media-derive-worker.ts` (decisão 22-d).
-  const recusa = await motivoDaRecusaDeDestino(base, "organizacao");
+  const recusa = await motivoDaRecusaDaBaseDoProvedorPersonalizado(base);
   if (recusa) return { ok: false, error: recusa };
   try {
     const res = await timedFetch(`${base}/models`, {
